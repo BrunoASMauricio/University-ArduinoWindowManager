@@ -1,0 +1,573 @@
+#LyX 2.2 created this file. For more info see http://www.lyx.org/
+\lyxformat 508
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass report
+\use_default_options true
+\maintain_unincluded_children false
+\language portuguese
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman "default" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command bibtex
+\index_command default
+\float_placement h
+\paperfontsize default
+\spacing single
+\use_hyperref false
+\papersize default
+\use_geometry true
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine natbib
+\cite_engine_type authoryear
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 1
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\leftmargin 2cm
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Title
+Arcade Machine com gestor de janelas
+\end_layout
+
+\begin_layout Author
+Álvaro Silva,Bruno Máurico
+\end_layout
+
+\begin_layout Abstract
+Resumo Neste trabalho simulamos uma Arcade Machine usando a placa UNO32.
+ Para o fazer, conectamos a placa um ecrã LCD (referência) de 64 *128 bits,
+ bem como um rato (referência), além de um teclado.
+ Os jogos que desenvolvemos foram os conhecidos PONG (controlado por dois
+ potenciómetros) e o SNAKE (controlado por teclado) .
+ Grande parte da complexidade do trabalho encontra-se no sistema do gestor
+ de janelas que permite minimizar e fechar qualquer um dos jogos/programas
+ em execução, assim como gerir este paralelismo de acontecimentos simultâneos.
+ 
+\end_layout
+
+\begin_layout Chapter
+Interface com periféricos:
+\end_layout
+
+\begin_layout Section
+Teclado:
+\end_layout
+
+\begin_layout Subsection
+Protoco do teclado :
+\end_layout
+
+\begin_layout Paragraph
+O protoco de comunicação entre o teclado e o arduino é o PS2 , que consiste
+ num protoco de comunicação série com um dataline e um clockline .
+ Quando o teclado quer enviar informação verifica se a clockline está ativa.
+ Esta terá que estar ativa durante pelo menos 50 microssegundos para que
+ o dispositivo comece a transmitir a informação.
+ A comunicação é feita com 11 bits , sendo o primeiro o start bit (sempre
+ colocado a zero), 8 bits de informação , 1 bit de paridade ,e um stop bit
+ que é sempre colocado a 1.
+ 
+\begin_inset CommandInset citation
+LatexCommand citep
+key "chapweske2003ps"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Implementaçáo :
+\end_layout
+
+\begin_layout Paragraph
+Recorremos à implementação feita por PaulStoffregen em https://github.com/
+ PaulStoffregen/PS2Keyboard , fazendo ligeiras alterações (retirar funções
+ que não usamos , retirar defines que não usamos referentes a outras placas
+ e retirar dicionários de conversão entre teclados de vários paises ) e,
+ para assegurar o bom funcionamento do programa seguimos o que aprendemos
+ e alteramos a linha presente no final do método PS2keyboard.begin (attachInterru
+pt(irq_num, ps2interrupt, FALLING); por attachInterrupt(digitalPinToInterrupt(ir
+q_num), ps2interrupt, FALLING);.
+\end_layout
+
+\begin_layout Subsection
+Funcionamento da implementação:
+\end_layout
+
+\begin_layout Paragraph
+A parte pricipal da implementação é o interrupt (ps2interrupt) que trata
+ atualizar a variável incoming (com cada bit lido ,se estes forem os bits
+ de informação, a variável incoming fica com o valor desse bit guardada
+ nos seus bits através de um or lógico na posição correta ) .Quando o contador
+ de bit chega a 11 , final da transmissão ele guarda a informação util variável
+ incoming num buffer de chars (que obrigatoriamente se apaga se o tempo
+ entre um bit recebido e outro for superior a 250 ms.
+ (assim pelo tamanho ocupado do buffer é possivel distinguir as teclas que
+ quando sao primidas enviam varios bytes do que carregar numa tecla normal
+ várias vezes) (de referir que o buffer e o incoming e os respetivos tamanhos
+ são variáveis globais).
+\end_layout
+
+\begin_layout Paragraph
+Quando se quer ler chama-se o método PS2keyboard.avaiable que retorna 1 basicamen
+te se tiver caracters no buffer , seguido de um PSkeyboard:read que pega
+ nesse buffer de bytes e converte no código que o utilizador espera char
+ de 8 bits (mediante o país do teclado e o tipo de moficador do caracter
+ ,usando uma série de funções para esse efeito) e o retorna.
+\end_layout
+
+\begin_layout Section
+Rato:
+\end_layout
+
+\begin_layout Section
+Monitor:
+\end_layout
+
+\begin_layout Chapter
+Jogos e programas:
+\end_layout
+
+\begin_layout Section
+Considerações gerais:
+\end_layout
+
+\begin_layout Paragraph
+Ambos os jogos são encapsulados em funções de nome SnakeApp() ,PongApp()
+ que permitem com que estas sejam executadas apartir do main apenas chamando
+ essas funções (que por sua vez chamam a classe respetiva e fazem a gestão
+ dos ecrãs), a lógica delas está descrita em baixo.
+\end_layout
+
+\begin_layout Section
+PONG:
+\end_layout
+
+\begin_layout Subsection
+Estrutura de código:
+\end_layout
+
+\begin_layout Paragraph*
+O PONG está estruturado como uma classe (pongGAME), com os métodos newBallspeed
+ (que altera a velocidade da bola, se necessário, quando bate nos pads dos
+ jogadores ou nas margens), newRound (que inicia uma nova ronda caso tenha
+ havido uma marcação de ponto), newResult (que executa o update dos resultados
+ dos jogadores) e o atualizeGame (que controla a lógica do jogo).
+\end_layout
+
+\begin_layout Paragraph
+As variáveis guardadas na classe para a execução do jogo são: o número de
+ pontos necessários para vitória, a posição das barras (é guardada a coordenada
+ vertical da posição do canto superior esquerdo delas), os pontos de cada
+ jogador) a posição da bola (que necessita de 2 inteiros para guardar a
+ posição vertical e horizontal do canto superior esquerdo da bola), e a
+ velocidade da bola (também guardada com dois inteiros).
+\end_layout
+
+\begin_layout Subsection
+Funcionamento do ciclo de jogo:
+\end_layout
+
+\begin_layout Paragraph
+O mapa é iniciado com a criação de um objeto pongGame, que coloca os pontos
+ dos jogadores a zero, centra a bola no centro do ecrã, inicia a posição
+ dos pads e gera um vetor de velocidade pseudoaleatório para iniciar o movimento
+ da bola.
+ Após este procedimento, o jogo está a executar o método atualizeGame em
+ loop.
+ Este método atualiza a posição das barras dos jogadores mediante os valores
+ lidos nos potenciómetros.
+ De seguida, atualiza a posição da bola mediante a velocidade atual e chama
+ o método newBallspeed, que altera o vetor velocidade da bola, se for caso
+ disso, e retorna a 1 ou 2 se a bola se encontrar numa posição de golo para
+ o jogador 1 ou 2, respetivamente, e a 0 se não houver golos.
+ Por fim, se for golo, atualiza o resultado usando o método newResult e
+ executa o método newRound.
+ O método atualize game retorna a 1 ou 2 se o jogo tiver acabado com vitória
+ do jogador 1 ou 2, e a 0 caso ainda continue (este valor vem do retorno
+ do método newResult).
+\end_layout
+
+\begin_layout Paragraph
+De referir ainda que o método newBallspeed altera o vetor velocidade da
+ bola 
+\begin_inset Formula $\left[V_{x},V_{y}\right]$
+\end_inset
+
+quando bate em cima ou em baixo da borda do jogo para 
+\begin_inset Formula $\left[V_{x},-V_{y}\right]$
+\end_inset
+
+ e, quando bate num pad de um jogador, para
+\begin_inset Formula $\left[-V_{x},(|V_{y}|+1)\times rand(-1,1)\right]$
+\end_inset
+
+ .
+ Quando bate num pad de um jogador a velocidade x inverte, a velocidade
+ em y aumenta 1 em módulo e vai para cima ou para baixo consoante o número
+ pseudoaleatório (com média testada 0) for maior do que 0 ou não.
+\end_layout
+
+\begin_layout Subsection
+Interface com impressão no ecrã :
+\end_layout
+
+\begin_layout Paragraph
+A classe também guarda variáveis e tem métodos próprios para executar a
+ sua impressão no LCD.
+ Ela guarda um unsigned char screen, que representa um screen dos 7 disponíveis
+ onde será atualizado o jogo, e um inteiro o ControlledDelay que representa
+ o delay entre jogadas sucessivas.
+ 
+\end_layout
+
+\begin_layout Paragraph
+São usadas as funções criadas para o LCD (ST7565_Print e ST7565_Print_Int)
+ para imprimir os pontos de cada jogador e a dificuldade do jogo.
+ Para imprimir os pads e a bola foi criada a função (Pong_paint), que imprime
+ um retângulo ou quadrado e recebe a linha e a coluna onde quer escrever,
+ a altura e largura do retângulo, além de escrever um 0 ou um 1 (esta função
+ não faz mais do que chamar a função ST7565_write_pixel num duplo ciclo
+ for).
+ Foi também criada outra função (Pong_write) que é apenas um chamamento
+ duplo da função Pong_paint para imprimir os pads dos jogadores.
+\end_layout
+
+\begin_layout Paragraph*
+É de sublinhar que, em cada interação, o jogo apaga e reescreve as bolas
+ e os pads, sendo apenas essas secções que recebem o refresh no screen.
+ 
+\end_layout
+
+\begin_layout Subsection
+Controladores : 
+\end_layout
+
+\begin_layout Paragraph
+A posição dos pads é controlada pelo nível de tensão dos potenciómetros
+ através da expressão seguinte, que atualiza a altura do pad mediante a
+ fração do valor máximo recebido pelo potenciómetro (1023) e a altura em
+ que ele se pode mover (this->ScreenHeight-CursorHeight):
+\end_layout
+
+\begin_layout Enumerate
+NewPosition1 = (movplayer1*(this->ScreenHeight-CursorHeight))/1023; (no
+ ficheiro Pong.cpp)
+\end_layout
+
+\begin_layout Paragraph
+O movplayer , valor trazido para dentro da função que representa o valor
+ lido pelo potenciómetro vem da chamada a analogread através da função Listen
+ da struct Controller C (defininda em ControlsMain.cpp) .
+\end_layout
+
+\begin_layout Subsection
+Observações:
+\end_layout
+
+\begin_layout Paragraph
+A conciliação do tempo do programa com o tempo do refresh do LCD foi problemátic
+o, não sendo possível fazer um mecanismo de velocidade que ativasse todos
+ os bits pelo caminho (à medida que a bola ia passando), porque tornaria
+ o jogo muito lento para os jogadores, assim a velocidade no momento k faz
+ atualizar a posição k+1 pela equação 
+\begin_inset Formula $p_{k+1}=p_{k}+v_{k}$
+\end_inset
+
+.
+ .
+ 
+\end_layout
+
+\begin_layout Paragraph
+Sempre que há um toque num pad de um jogador a nova velocidade gerada da
+ bola tem componente vertical sempre crescente, mantendo-se a horizontal,
+ o que faz com que o jogo se torne cada vez mais difícil.
+ A função que gera a velocidade inicial será abordada na secção de funções
+ comuns.
+\end_layout
+
+\begin_layout Section
+SNAKE:
+\end_layout
+
+\begin_layout Subsection
+Estrutura de código:
+\end_layout
+
+\begin_layout Paragraph
+O snake está estruturado numa classe snake_Game ,tendo os métodos new_food_point
+ (que cria um novo ponto de comida no mapa) ,move_to_local (que atualiza
+ as posicões x,y mediante o movimento escolhido pelo jogador) ,check_if_can_move
+ (que verifica se a posição para onde se vai mover é válida ),hit_food_point
+ (que retorna um se a snake atingiu o ponto de comida e 0 caso contrário)
+ e o método principal game_mov que executa a lógica do jogo.
+\end_layout
+
+\begin_layout Paragraph
+As variáveis guardadas na classe são : 3 pontos ,cada um que guarda 2 int
+ (coordenadas em x e y) ,referentes à posição da frente ,trás da cobra e
+ do ponto de comida.
+ Um vetor de unigned char que guarda a posição relativa dos pontos que ocupa
+ a snake , e o tamanho atual da snake.
+\end_layout
+
+\begin_layout Subsection
+Funcionamento do ciclo de jogo:
+\end_layout
+
+\begin_layout Paragraph
+É inicializada a classe que coloca a snake no centro do ecrã e gera um ponto
+ de comida aleatório.
+ É chamado em loop o método game_mov que verifica se o movimento que o jogador
+ quer fazer é válido após isso se o tamanho for 0 (so tiver um ponto ),
+ coloca a tail da snake na mesma posição que a frente , move a frente da
+ cobra ,se acertar num ponto de comida acrescenta um elememto ao vetor snake
+ e atualiza a posição anterior com o movimento que executou e gera um novo
+ ponto de comida ,se não acertou em nenhum ponto , apaga a tail e faz shift
+ ao vetor de posições relativas da snake.
+ 
+\end_layout
+
+\begin_layout Subsection
+Interface com impressão no ecrã :
+\end_layout
+
+\begin_layout Paragraph
+Para imprimir o jogo recorre às funções Write_Square (que apenas chama a
+ funcao em duplo ciclo ST7565_write_pixel) de forma a desenhar um quadrado
+ numa poisição especifica do lcd , esta função imprime tanto o foodpoint
+ como imprime a head da SNAKE e apaga a TAIL.
+ É de sublinhar que em cada interação o jogo apenas apaga a TAIL (se for
+ caso disso ,não ter comido um ponto) , escreve a nova posição de HEAD (parte
+ da frente) e se necessário desenha outro foodpoint .
+\end_layout
+
+\begin_layout Subsection
+Controladores:
+\end_layout
+
+\begin_layout Paragraph
+A snake é controlada pelo teclado pelas teclas das arrows , como se usou
+ a biblioteca arduino PS2Keyboard com poucas alterações para ler do teclado
+ usa-se a função LISTEN (que é um alias do método da biblioteca keyboard.avaiable
+() seguido de um keyboard.read() para devolver o caracter correspondente
+ ) .
+ Após ter o char converte-se o código do char para o mov que a classe snake_game
+ espera receber .
+\end_layout
+
+\begin_layout Subsection
+Observações:
+\end_layout
+
+\begin_layout Paragraph
+Para poupar memória o vetor de posições relativas guarda em cada posição
+ um unsigned char de valor 1 se o proximo elemento da cobra estiver em cima
+ , 2 se estiver á direita ,3 se estiver em baixo e 4 se estiver à esquerda
+ (com esta forma de guarda os dados poupamos de 2 a 8 vezes mais memória
+ , em vez de 2 unsigned chars ou 2 int que guardariam a posição absoluta
+ da cobra ,mas perde-se a possibilidade de verificar se ela se comeu a si
+ própria ,algo facilmente fazivel no lcd onde ela está impressa).
+ A atualização deste vetor fica clara no esquema seguinte :
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float table
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Tabular
+<lyxtabular version="3" rows="2" columns="2">
+<features tabularvalignment="middle">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename imagens/snakebefore.jpg
+	lyxscale 50
+	width 7cm
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename imagens/snakeafter.jpg
+	lyxscale 50
+	width 7cm
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Snake antes
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Snake depois
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Paragraph
+Considerando x crescente para a direita ,e y crescente para baixo , canto
+ superior esquerdo (0,0).
+ O vetor antes que guarda a posição relativa dos próximos elementos é [2,1,1,2,2
+,3,3,3] ,a head está em (3,3) e a tail em(1,2).
+ Quando recebe a ordem para ir para baixo a nova head é (3,3+1)(head atualizada
+ com ordem de movimento) ,a nova tail é (1+1,2).(tail atualizada com último
+ elemento do vetor de próximos elementos), e o novo vetor passa a ser [1,1,2,2,3
+,3,3,(3)] (vetor antigo shiftado de um elemento com um elemento acrescentado
+ correspondente ao movimento realizado.
+ De referir também que o jogo tem um parâmetro ratio que permite escolher
+ a largura da snake e do ponto no mapa desde que ele seja uma potência de
+ base dois até 8.
+ 
+\end_layout
+
+\begin_layout Chapter
+Gestor de janelas e paralelismo:
+\end_layout
+
+\begin_layout Chapter
+Funções gerais:
+\end_layout
+
+\begin_layout Section
+Geração de números pseudo aleatórios :
+\end_layout
+
+\begin_layout Paragraph
+O método usado para geração de números pseudo aleatórios foi o método de
+ Lehmer 
+\begin_inset CommandInset citation
+LatexCommand citep
+key "payne1969coding"
+
+\end_inset
+
+.
+ Que gera o próximo número pseudo-aleatório multiplicando o anterior por
+ um dado g e retirando um módulo n.
+ A única alteração que fizemos foi acrescentar um termo constante a somar
+ .
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+X_{k+1}=gX_{k}modn
+\]
+
+\end_inset
+
+ nmod
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset bibtex
+LatexCommand bibtex
+bibfiles "ref"
+options "plainnat"
+
+\end_inset
+
+
+\end_layout
+
+\end_body
+\end_document

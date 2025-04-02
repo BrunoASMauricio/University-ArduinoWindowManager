@@ -1,0 +1,144 @@
+#include <Arduino.h>
+#include <string.h>
+
+#define LED 7
+#define BUT 6
+bool lastbut = false;
+
+#define BUFSIZE 10
+char cmd[BUFSIZE] = "MY BEANS?";
+int pos = 0;
+bool Blinking;
+
+int num1=0;
+int num1_c=0;
+int num2=0;
+int num2_c=0;
+int i;
+int time;
+int prev = 0;
+void setup() {
+  Serial.begin(115200);
+  Serial.println("Introduza um comando seguido de <enter>");
+  pinMode(LED, OUTPUT);
+  pinMode(BUT, INPUT);
+  Blinking = false;
+}
+
+void loop() {
+  char ch;
+  if(Blinking){
+  	if(num1){
+  		if(millis() > time+num2/2){
+  			//Serial.println("Changing blink");
+  			time = millis();
+  			num1--;
+  			prev = prev^1;
+  			//Serial.print(prev);
+  			digitalWrite(LED, prev);
+  		}
+  	}else{
+  		Blinking = false;
+  		digitalWrite(LED, LOW);
+  	}
+  }
+  if (Serial.available()) {
+    ch = Serial.read();
+    if((int)ch == 27){
+    	while(not Serial.available()){
+    		delay(1);
+    	}
+    	ch = Serial.read();
+    	if((int)ch == 91){
+    		while(not Serial.available()){
+				delay(1);
+			}
+			ch = Serial.read();
+			if((int)ch == 65){
+				for(int i = 0; i < pos; i++){
+					Serial.write((char)127);
+					if(cmd[i] == '\0'){
+						break;
+					}
+				}
+				for(int i = 0; i < 10; i++){
+					Serial.write(cmd[i]);
+					if(cmd[i] == '\0'){
+						pos = i;
+						break;
+					}
+				}
+			}
+    	}
+    }else{
+        Serial.write(ch);
+        if(ch == 127 && pos != 0){
+        	pos--;
+        }
+        else
+        if (ch == '\r' && pos != 0) {
+          Serial.write('\n');
+          switch (cmd[0]) {
+          	 case 'v':
+          		 Serial.println("Este é um projeto fixe");
+          		 break;
+            case 'l':
+              digitalWrite(LED, cmd[2] != '0');
+              break;
+            case 'b':
+              Serial.print("b ");
+              Serial.println(!digitalRead(BUT));
+              break;
+            case 'c':
+            	for(int j = 0; j < 10; j++){
+            		Serial.println();
+            	}
+            	break;
+            case 'p':
+            	if(pos < 6){
+            		break;
+            	}
+            	num1=0;
+            	num1_c=0;
+            	num2=0;
+            	num2_c=0;
+            	Blinking = true;
+
+            	for ( i=2;i<pos;i++){
+            		Serial.println(cmd[i]);
+            		if(cmd[i] == ' '){
+            			break;
+            		}
+            		num1 = num1*10 + ((int)cmd[i]-48);
+            	}
+            	int s=i;
+            	for ( i=i+1;i<pos;i++){
+            	     if(cmd[i] == '\0'){
+            	        break;
+            	       }
+            	      num2 = num2*10 + ((int)cmd[i]-48);
+            	 }
+            	 num1 = (num1) * 2+1;
+            	 time = millis();
+
+          }
+          for(int j = pos; j < 10; j++){
+        	  cmd[j] = ' ';
+          }
+          cmd[pos] = '\0';
+          pos = 0;
+        } else
+          if (pos < BUFSIZE)
+            cmd[pos++] = ch;
+    }
+
+  }
+
+  bool but = digitalRead(BUT);
+  if (but != lastbut) {
+    lastbut = but;
+    Serial.print(millis());
+    Serial.print(" b ");
+    Serial.println(!but);
+  }
+}

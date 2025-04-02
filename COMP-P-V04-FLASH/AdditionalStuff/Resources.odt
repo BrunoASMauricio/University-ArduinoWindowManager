@@ -1,0 +1,9 @@
+﻿https://stackoverflow.com/questions/2887813/from-c-to-assembly
+
+gcc -O2 -S -c foo.c
+
+run-time self-programming
+
+/home/bruno/Documents/MyProjects/COMP-project-thingy/COMP-P-V04-FLASH/AdditionalStuff/CE209_FLASH_Rtsp/src
+
+
